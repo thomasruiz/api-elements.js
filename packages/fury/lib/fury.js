@@ -58,11 +58,10 @@ class Fury {
     const adapter = this.findAdapter(source, mediaType, 'validate');
 
     if (!adapter) {
-      return this.parse({ source, mediaType, adapterOptions }, (err, result) => {
-        if (result && result.annotations.length > 0) {
+      return this.parse({ source, mediaType, adapterOptions }, (err, parseResult) => {
+        if (parseResult && parseResult.annotations.length > 0) {
           const { ParseResult } = this.minim.elements;
-          const parseResult = new ParseResult(result.annotations);
-          done(err, parseResult);
+          done(null, new ParseResult(parseResult.annotations));
         } else {
           done(err, null);
         }
@@ -75,12 +74,16 @@ class Fury {
       options = Object.assign(options, adapterOptions);
     }
 
-    return adapter.validate(options, (err, elements) => {
-      if (!elements || elements instanceof this.minim.Element) {
-        done(err, elements);
-      } else {
-        done(err, this.load(elements));
+    return adapter.validate(options, (err, parseResult) => {
+      if (!parseResult) {
+        return done(err, null);
       }
+
+      if (!(parseResult instanceof this.minim.Element)) {
+        return done(null, this.load(parseResult));
+      }
+
+      return done(null, parseResult);
     });
   }
 
@@ -106,12 +109,16 @@ class Fury {
         options = Object.assign(options, adapterOptions);
       }
 
-      return adapter.parse(options, (err, elements) => {
-        if (!elements || elements instanceof this.minim.Element) {
-          done(err, elements);
-        } else {
-          done(err, this.load(elements));
+      return adapter.parse(options, (err, parseResult) => {
+        if (!parseResult) {
+          return done(err);
         }
+
+        if (!(parseResult instanceof this.minim.Element)) {
+          return done(null, this.load(parseResult));
+        }
+
+        return done(null, parseResult);
       });
     } catch (err) {
       return done(err);
